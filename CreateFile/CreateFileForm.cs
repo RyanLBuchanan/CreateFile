@@ -8,13 +8,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using BankLibrary;
 
 namespace CreateFile
 {
     public partial class CreateFileForm : BankUIForm
     {
-        private StreamWriter fileWriter;  // Writes data to text file
+        private BinaryFormatter formatter = new BinaryFormatter();
+        private FileStream output;  // Writes data to text file
 
         // Parameterless constructor
         public CreateFileForm()
@@ -51,11 +54,8 @@ namespace CreateFile
                     try
                     {
                         // Save file with write access
-                        var output = new FileStream(fileName,
+                        output = new FileStream(fileName,
                             FileMode.OpenOrCreate, FileAccess.Write);
-
-                        // Set s file to where data is written
-                        fileWriter = new StreamWriter(output);
 
                         // Disable Save Button and enable Enter Button
                         saveButton.Enabled = false;
@@ -89,15 +89,13 @@ namespace CreateFile
                     if (accountNumber > 0)
                     {
                         // Record containing TextBox values to output
-                        var record = new Record(accountNumber,
+                        var record = new RecordSerializable(accountNumber,
                             values[(int)TextBoxIndices.First],
                             values[(int)TextBoxIndices.Last],
                             decimal.Parse(values[(int)TextBoxIndices.Balance]));
 
-                        // Write Record to file, fields separted by commas
-                        fileWriter.WriteLine(
-                            $"{record.Account},{record.FirstName}," +
-                            $"{record.LastName},{record.Balance}");
+                        // Write Record to FileStream (serialize object)
+                        formatter.Serialize(output, record);
                     }
                     else
                     {
@@ -106,7 +104,7 @@ namespace CreateFile
                             MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-                catch (IOException)
+                catch (SerializationException)
                 {
                     MessageBox.Show("Error writing to file", "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -126,7 +124,7 @@ namespace CreateFile
         {
             try
             {
-                fileWriter?.Close();  // Close StreamWriter and underlying file
+                output?.Close();  // Close StreamWriter and underlying file
             }
             catch (IOException)
             {
